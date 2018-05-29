@@ -206,21 +206,24 @@ class mainPage(QMainWindow):
             self.version -= 1
             self.versionLabel.setText(str(self.version))
             self.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
+            self.hardwareRefresh()
     def vPlus(self):
             self.version += 1
             self.versionLabel.setText(str(self.version))
             self.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
+            self.hardwareRefresh()
     def bMinus(self):
         if(self.brand - 1 >= 0):
             self.brand -= 1
             self.brandLabel.setText(self.brandArr[self.brand])
             self.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
+            self.hardwareRefresh()
     def bPlus(self):
         if(self.brand + 1 < len(self.brandArr)):
             self.brand += 1
             self.brandLabel.setText(self.brandArr[self.brand])
             self.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
-
+            self.hardwareRefresh()
     def KEY_RIGHT(self):
                 print(self.command)
                 os.system(self.command + 'KEY_RIGHT')
@@ -241,7 +244,7 @@ class mainPage(QMainWindow):
                 os.system(self.command + 'KEY_POWER')
 
     def KEY_SOURCE(self):
-                os.system(self.command + 'KEY_SOURCE')
+                os.system(self.command + 'KEY_POWER2')
 
     def KEY_UP(self):
                 os.system(self.command + 'KEY_UP')
@@ -249,10 +252,12 @@ class mainPage(QMainWindow):
     def KEY_DOWN(self):
                 os.system(self.command + 'KEY_DOWN')
 
-    def hardwareRefresh(self,Type,Brand,Version):
-                os.system("sudo cp /home/pi/"+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+" /etc/lirc/lircd.conf")
-                os.system("sudo /etc/init.d/lirc restart")
-                os.system("sudo lircd --device /dev/lirc0")
+    def hardwareRefresh(self):
+        ###reset ir data and change to another one
+        os.system("sudo cp /home/pi/"+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+" /etc/lirc/lircd.conf")
+        os.system("sudo /etc/init.d/lirc restart")
+        os.system("sudo lircd --device /dev/lirc0")
+        print(self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version))
     
     def airconConnect(self):
         self.leftButton.setText("fanDOWN")
@@ -269,7 +274,9 @@ class mainPage(QMainWindow):
         self.version = 1
         self.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
         self.horizontalGroupBox.hide()
+        self.hardwareRefresh()
         self.ACGroupBox.show()
+        
         
         
     def projectorConnect(self):
@@ -284,6 +291,7 @@ class mainPage(QMainWindow):
         self.version = 1
         self.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
         self.horizontalGroupBox.hide()
+        self.hardwareRefresh()
         self.ACGroupBox.show()
         
     def tvConnect(self):
@@ -299,6 +307,7 @@ class mainPage(QMainWindow):
         self.version = 1
         self.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
         self.horizontalGroupBox.hide()
+        self.hardwareRefresh()
         self.ACGroupBox.show()
         print("tv")
         
