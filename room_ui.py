@@ -7,6 +7,7 @@ import room_core
 import threading
 import camera_core
 import subprocess
+import irblast
 
 class mainPage(QMainWindow):
     def __init__(self, parent=None):
@@ -14,6 +15,8 @@ class mainPage(QMainWindow):
         self.setFixedSize(720, 480)
         self.move(100,100)
         self.setWindowTitle("ROOM remote control")
+        self.device = room_core.Device()
+        self.blaster = irblast.blaster()
         self.type = ""
         self.command = ""
         self.streamLabel = QLabel("stream")
@@ -125,7 +128,6 @@ class mainPage(QMainWindow):
         self.ACGroupBox = QGroupBox(self.type+" Remote")
         self.ACGroupBox.setFixedSize(710,470)
         self.ACGroupBox.setStyleSheet("QGroupBox {border: 1px solid gray;margin-top: 0.5em;margin-left: 0.5em} QGroupBox::title {subcontrol-origin: margin;left: 10px;padding: 0 3px 0 3px;}")
-        self.backButton = QPushButton("back",self)
         vbox = QVBoxLayout()
         hbox1 = QHBoxLayout()
         hbox2 = QHBoxLayout()
@@ -137,7 +139,8 @@ class mainPage(QMainWindow):
         vButtonR = QPushButton(">",self)
         bButtonL = QPushButton("<",self)
         bButtonR = QPushButton(">",self)
-        
+
+        self.backButton = QPushButton("back",self)
         self.leftButton = QPushButton("Left",self)
         self.rightButton = QPushButton("Right",self)
         self.upButton = QPushButton("Up",self)
@@ -150,20 +153,20 @@ class mainPage(QMainWindow):
 
         #CONNECT THE BUTTONS
 
-        self.backButton.clicked.connect(self.backConnect)
         vButtonL.clicked.connect(self.vMinus)
         vButtonR.clicked.connect(self.vPlus)
         bButtonL.clicked.connect(self.bMinus)
         bButtonR.clicked.connect(self.bPlus)
-        self.leftButton.clicked.connect(self.KEY_LEFT)
-        self.rightButton.clicked.connect(self.KEY_RIGHT)
-        self.upButton.clicked.connect(self.KEY_UP)
-        self.downButton.clicked.connect(self.KEY_DOWN)
-        self.menuButton.clicked.connect(self.KEY_MENU)
-        self.modeButton.clicked.connect(self.KEY_MODE)
-        self.okButton.clicked.connect(self.KEY_OK)
-        self.powerButton.clicked.connect(self.KEY_POWER)
-        self.sourceButton.clicked.connect(self.KEY_SOURCE)
+        self.backButton.clicked.connect(self.backConnect)
+        self.leftButton.clicked.connect(self.blaster.KEY_LEFT)
+        self.rightButton.clicked.connect(self.blaster.KEY_RIGHT)
+        self.upButton.clicked.connect(self.blaster.KEY_UP)
+        self.downButton.clicked.connect(self.blaster.KEY_DOWN)
+        self.menuButton.clicked.connect(self.blaster.KEY_MENU)
+        self.modeButton.clicked.connect(self.blaster.KEY_MODE)
+        self.okButton.clicked.connect(self.blaster.KEY_OK)
+        self.powerButton.clicked.connect(self.blaster.KEY_POWER)
+        self.sourceButton.clicked.connect(self.blaster.KEY_SOURCE)
         
         #SET BUTTONS LOCATION
         hbox1.addWidget(vButtonL)
@@ -205,59 +208,27 @@ class mainPage(QMainWindow):
         if(self.version - 1 > 0):
             self.version -= 1
             self.versionLabel.setText(str(self.version))
-            self.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
-            self.hardwareRefresh()
+            self.blaster.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
+            print(self.blaster.command)
     def vPlus(self):
             self.version += 1
             self.versionLabel.setText(str(self.version))
-            self.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
-            self.hardwareRefresh()
+            self.blaster.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
     def bMinus(self):
         if(self.brand - 1 >= 0):
             self.brand -= 1
             self.brandLabel.setText(self.brandArr[self.brand])
-            self.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
-            self.hardwareRefresh()
+            self.blaster.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
     def bPlus(self):
         if(self.brand + 1 < len(self.brandArr)):
             self.brand += 1
             self.brandLabel.setText(self.brandArr[self.brand])
-            self.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
-            self.hardwareRefresh()
-    def KEY_RIGHT(self):
-                print(self.command)
-                os.system(self.command + 'KEY_RIGHT')
+            self.blaster.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
 
-    def KEY_LEFT(self):
-                os.system(self.command + 'KEY_LEFT')
-
-    def KEY_MENU(self):
-                os.system(self.command + 'KEY_MENU')
-                
-    def KEY_MODE(self):
-                os.system(self.command + 'KEY_MODE')
-                
-    def KEY_OK(self):
-                os.system(self.command + 'KEY_OK')
-            
-    def KEY_POWER(self):
-                os.system(self.command + 'KEY_POWER')
-
-    def KEY_SOURCE(self):
-                os.system(self.command + 'KEY_POWER2')
-
-    def KEY_UP(self):
-                os.system(self.command + 'KEY_UP')
-
-    def KEY_DOWN(self):
-                os.system(self.command + 'KEY_DOWN')
-
-    def hardwareRefresh(self):
-        ###reset ir data and change to another one
-        os.system("sudo cp /home/pi/"+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+" /etc/lirc/lircd.conf")
-        os.system("sudo /etc/init.d/lirc restart")
-        os.system("sudo lircd --device /dev/lirc0")
-        print(self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version))
+    def hardwareRefresh(self,Type,Brand,Version):
+                os.system("sudo cp /home/pi/"+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+" /etc/lirc/lircd.conf")
+                os.system("sudo /etc/init.d/lirc restart")
+                os.system("sudo lircd --device /dev/lirc0")
     
     def airconConnect(self):
         self.leftButton.setText("fanDOWN")
@@ -272,11 +243,9 @@ class mainPage(QMainWindow):
         self.sourceButton.setDisabled(True)
         self.brand = 0
         self.version = 1
-        self.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
+        self.blaster.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
         self.horizontalGroupBox.hide()
-        self.hardwareRefresh()
         self.ACGroupBox.show()
-        
         
         
     def projectorConnect(self):
@@ -289,9 +258,8 @@ class mainPage(QMainWindow):
         self.ACGroupBox.setTitle(self.type+" Remote")
         self.brand = 0
         self.version = 1
-        self.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
+        self.blaster.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
         self.horizontalGroupBox.hide()
-        self.hardwareRefresh()
         self.ACGroupBox.show()
         
     def tvConnect(self):
@@ -305,9 +273,8 @@ class mainPage(QMainWindow):
         
         self.brand = 0
         self.version = 1
-        self.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
+        self.blaster.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
         self.horizontalGroupBox.hide()
-        self.hardwareRefresh()
         self.ACGroupBox.show()
         print("tv")
         
@@ -333,9 +300,6 @@ class mainPage(QMainWindow):
         self.CAMGroupBox.hide()
         self.ACGroupBox.hide()
         self.horizontalGroupBox.show()
-
-
-
 
 def exitHandler():
     room_core.isOn = False
