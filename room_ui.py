@@ -3,143 +3,102 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5 import *
 import resource
-import room_core
-import threading
-import camera_core
-import subprocess
-import irblast
+import IR_signal
 
-class mainPage(QMainWindow):
+class Window(QMainWindow):
     def __init__(self, parent=None):
-        super(mainPage, self).__init__(parent)
+        super(Window, self).__init__(parent)
         self.setFixedSize(720, 480)
         self.move(100,100)
         self.setWindowTitle("ROOM remote control")
-        self.device = room_core.Device()
-        self.blaster = irblast.blaster()
-        self.type = ""
-        self.command = ""
-        self.streamLabel = QLabel("stream")
-        self.cam = camera_core.Camera(self)
-        self.coreThread = threading.Thread(target=room_core.programLoop)
-        self.coreThread.start()
-        self.cameraThread = threading.Thread(target=self.cam.turnIdle)
-        self.cameraThread.start()
-        self.dest = self.cam.destination[:-1]
-        self.brandArr = ["SAMSUNG","LG","HAIER","PANASONIC","HITACHI"]
-        self.brand = 0
-        self.version = 1
         
-        #INIT MAINPAGE BUTTONS
-        self.ACbutton = QPushButton("",self)
-        self.PJbutton = QPushButton("",self)
-        self.TVbutton = QPushButton("",self)
-        self.CAMbutton = QPushButton("",self)
-        self.ACbutton.setStyleSheet("border-image: url(:/icon/aircon.png);min-height: 150px;max-width: 150px")
-        self.PJbutton.setStyleSheet("border-image: url(:/icon/projector.png);min-height: 150px;max-width: 150px")
-        self.TVbutton.setStyleSheet("border-image: url(:/icon/tv.png);min-height: 150px;max-width: 150px")
-        self.CAMbutton.setStyleSheet("border-image: url(:/icon/cam.png);min-height: 150px;max-width: 150px")
-        
-        #INIT REMOTE DATA
-        self.brandLabel = QLabel("SAMSUNG")
-        self.versionLabel = QLabel("1")
-        self.versionLabel.setAlignment(Qt.AlignCenter)
-        self.brandLabel.setAlignment(Qt.AlignCenter)
+        self.mainPage = mainPage(self)
+        self.acPage = acPage(self)
+        self.pjPage = pjPage(self)
+        self.tvPage = tvPage(self)
 
         #CENTRAL WIDGET
         self.central_wid = QWidget()
         self.layout_for_wids = QStackedLayout()
 
+        #CONNECT THE BUTTONS
+        
+        
         #INIT PAGES
-        self.mainInit()
+        self.layout_for_wids.addWidget(self.mainPage)
+        self.layout_for_wids.addWidget(self.acPage)
+        self.layout_for_wids.addWidget(self.pjPage)
+        self.layout_for_wids.addWidget(self.tvPage)
 
-        self.remoteInit()
-        self.camInit()
-        self.streamInit()
         #SET CENTRAL WIDGET
         self.central_wid.setLayout(self.layout_for_wids)
         self.setCentralWidget(self.central_wid)
-            
-    def mainInit(self):
-        self.horizontalGroupBox = QGroupBox("Select your device")
-        self.horizontalGroupBox.setFixedSize(710,470)
-        self.horizontalGroupBox.setStyleSheet("QGroupBox {border: 1px solid gray;margin-top: 0.5em;margin-left: 0.5em} QGroupBox::title {subcontrol-origin: margin;left: 10px;padding: 0 3px 0 3px;}")
-        vbox = QVBoxLayout()
-        hbox1 = QHBoxLayout()
-        hbox2 = QHBoxLayout()
-
-        hbox1.addWidget(self.ACbutton)
-        self.ACbutton.clicked.connect(self.airconConnect)
-        
-        hbox1.addWidget(self.PJbutton)
-        self.PJbutton.clicked.connect(self.projectorConnect)
-
-        vbox.addLayout(hbox1)
-        
-        hbox2.addWidget(self.TVbutton)
-        self.TVbutton.clicked.connect(self.tvConnect)
-        
-        hbox2.addWidget(self.CAMbutton)  
-        self.CAMbutton.clicked.connect(self.camConnect)
-
-        vbox.addLayout(hbox2)
-        self.horizontalGroupBox.setLayout(vbox)
-        
-        self.layout_for_wids.addWidget(self.horizontalGroupBox)
-        
-    def camInit(self):
-        self.CAMGroupBox = QGroupBox("Camera module")
-        self.CAMGroupBox.setFixedSize(710,470)
-        self.CAMGroupBox.setStyleSheet("QGroupBox {border: 1px solid gray;margin-top: 0.5em;margin-left: 0.5em} QGroupBox::title {subcontrol-origin: margin;left: 10px;padding: 0 3px 0 3px;}")
-        self.camButton = QPushButton("camera streaming",self)
-        self.openButton = QPushButton("open save folder",self)
-        self.backButton = QPushButton("back",self)
-        vbox = QVBoxLayout()
-        vbox.addWidget(self.openButton)
-        vbox.addWidget(self.camButton)
-        vbox.addWidget(self.backButton)
-
-        self.CAMGroupBox.setLayout(vbox)
-
-        #CONNECT BUTTONS
-        self.backButton.clicked.connect(self.backConnect)
-        self.openButton.clicked.connect(self.openFolder)
-        self.camButton.clicked.connect(self.streamConnect)
 
         
-        self.layout_for_wids.addWidget(self.CAMGroupBox)
-    def streamInit(self):
-        self.strGroupBox = QGroupBox("Camera stream")
-        self.sbackButton = QPushButton("back")
-        self.strGroupBox.setFixedSize(710,470)
-        self.strGroupBox.setStyleSheet("QGroupBox {border: 1px solid gray;margin-top: 0.5em;margin-left: 0.5em} QGroupBox::title {subcontrol-origin: margin;left: 10px;padding: 0 3px 0 3px;}")
-        vbox = QVBoxLayout()
-        vbox.addWidget(self.streamLabel)
-        vbox.addWidget(self.sbackButton)
-        self.strGroupBox.setLayout(vbox)
-
-        #CONNECT BUTTONS
-        self.sbackButton.clicked.connect(self.streamBackConnect)
-        self.layout_for_wids.addWidget(self.strGroupBox)
-
+class mainPage(QGroupBox):
+    def __init__(self,coreUI):
+        super().__init__("Select your device")
+        self.coreUI = coreUI
+                                               
+        self.setFixedSize(720, 480)
+        #INIT MAINPAGE BUTTONS
         
-    def remoteInit(self):        
-        #INIT THE BUTTONS
-        self.ACGroupBox = QGroupBox(self.type+" Remote")
-        self.ACGroupBox.setFixedSize(710,470)
-        self.ACGroupBox.setStyleSheet("QGroupBox {border: 1px solid gray;margin-top: 0.5em;margin-left: 0.5em} QGroupBox::title {subcontrol-origin: margin;left: 10px;padding: 0 3px 0 3px;}")
-        vbox = QVBoxLayout()
-        hbox1 = QHBoxLayout()
-        hbox2 = QHBoxLayout()
-        hbox3 = QHBoxLayout()
-        hbox4 = QHBoxLayout()
-        hbox5 = QHBoxLayout()
+        self.ACbutton = QPushButton("",self)
+        self.PJbutton = QPushButton("",self)
+        self.TVbutton = QPushButton("",self)
+        self.STbutton = QPushButton("",self)
+        self.ACbutton.setStyleSheet("border-image: url(:/icon/aircon.png);min-height: 150px;max-width: 150px")
+        self.PJbutton.setStyleSheet("border-image: url(:/icon/projector.png);min-height: 150px;max-width: 150px")
+        self.TVbutton.setStyleSheet("border-image: url(:/icon/tv.png);min-height: 150px;max-width: 150px")
+        self.STbutton.setStyleSheet("border-image: url(:/icon/cam.png);min-height: 150px;max-width: 150px")
         
-        vButtonL = QPushButton("<",self)
-        vButtonR = QPushButton(">",self)
-        bButtonL = QPushButton("<",self)
-        bButtonR = QPushButton(">",self)
+        self.ACbutton.clicked.connect(self.ACconnect)
+        self.PJbutton.clicked.connect(self.PJconnect)
+        self.TVbutton.clicked.connect(self.TVconnect)
+        self.STbutton.clicked.connect(self.STconnect)
+        
+        self.vbox = QVBoxLayout()
+        self.hbox1 = QHBoxLayout()
+        self.hbox2 = QHBoxLayout()
 
+        self.hbox1.addWidget(self.ACbutton)
+        self.hbox1.addWidget(self.PJbutton)
+        self.vbox.addLayout(self.hbox1)
+        self.hbox2.addWidget(self.TVbutton)
+        self.hbox2.addWidget(self.STbutton)  
+
+        self.vbox.addLayout(self.hbox2)
+        self.setLayout(self.vbox)
+    def ACconnect(self):
+        self.hide()
+        self.coreUI.acPage.show()
+        print("AC")
+    def PJconnect(self):
+        self.hide()
+        self.coreUI.pjPage.show()
+        print("PJ")
+    def TVconnect(self):
+        self.hide()
+        self.coreUI.tvPage.show()
+        print("TV")
+    def STconnect(self):
+        print("ST")
+
+class acPage(QGroupBox):
+    def __init__(self,coreUI):
+        super().__init__("Airconditioner")
+        self.coreUI = coreUI
+##        self.signal = IR_signal.Signal()
+        self.setFixedSize(720, 480)
+
+        self.version = 1
+        self.brand = 1
+        self.brandArray = ["Samsung","Lg","Haier","Panasonic","Hitachi"]
+        self.brandLabel = QLabel(" Test ")
+        self.versionLabel = QLabel("1")
+        self.brandLabel.setAlignment(Qt.AlignCenter)
+        self.versionLabel.setAlignment(Qt.AlignCenter)
+                               
         self.backButton = QPushButton("back",self)
         self.leftButton = QPushButton("Left",self)
         self.rightButton = QPushButton("Right",self)
@@ -151,166 +110,239 @@ class mainPage(QMainWindow):
         self.powerButton = QPushButton("Power",self)
         self.sourceButton = QPushButton("Source",self)
 
+        self.vButtonL = QPushButton("<",self)
+        self.vButtonR = QPushButton(">",self)
+        self.bButtonL = QPushButton("<",self)
+        self.bButtonR = QPushButton(">",self)
+        
+        self.vbox = QVBoxLayout()
+        self.hbox1 = QHBoxLayout()
+        self.hbox2 = QHBoxLayout()
+        self.hbox3 = QHBoxLayout()
+        self.hbox4 = QHBoxLayout()
+        self.hbox5 = QHBoxLayout()
+        
         #CONNECT THE BUTTONS
 
-        vButtonL.clicked.connect(self.vMinus)
-        vButtonR.clicked.connect(self.vPlus)
-        bButtonL.clicked.connect(self.bMinus)
-        bButtonR.clicked.connect(self.bPlus)
         self.backButton.clicked.connect(self.backConnect)
-        self.leftButton.clicked.connect(self.blaster.KEY_LEFT)
-        self.rightButton.clicked.connect(self.blaster.KEY_RIGHT)
-        self.upButton.clicked.connect(self.blaster.KEY_UP)
-        self.downButton.clicked.connect(self.blaster.KEY_DOWN)
-        self.menuButton.clicked.connect(self.blaster.KEY_MENU)
-        self.modeButton.clicked.connect(self.blaster.KEY_MODE)
-        self.okButton.clicked.connect(self.blaster.KEY_OK)
-        self.powerButton.clicked.connect(self.blaster.KEY_POWER)
-        self.sourceButton.clicked.connect(self.blaster.KEY_SOURCE)
+##        self.vButtonL.clicked.connect(self.vMinus)
+##        self.vButtonR.clicked.connect(self.vPlus)
+##        self.bButtonL.clicked.connect(self.bMinus)
+##        self.bButtonR.clicked.connect(self.bPlus)
         
         #SET BUTTONS LOCATION
-        hbox1.addWidget(vButtonL)
-        hbox1.addWidget(self.versionLabel)
-        hbox1.addWidget(vButtonR)
-        vbox.addLayout(hbox1)
+        self.hbox1.addWidget(self.vButtonL)
+        self.hbox1.addWidget(self.versionLabel)
+        self.hbox1.addWidget(self.vButtonR)
+        self.vbox.addLayout(self.hbox1)
         
-        hbox2.addWidget(bButtonL)
-        hbox2.addWidget(self.brandLabel)
-        hbox2.addWidget(bButtonR)
-        vbox.addLayout(hbox2)
+        self.hbox2.addWidget(self.bButtonL)
+        self.hbox2.addWidget(self.brandLabel)
+        self.hbox2.addWidget(self.bButtonR)
+        self.vbox.addLayout(self.hbox2)
 
-        hbox3.addWidget(self.menuButton)
-        hbox3.addWidget(self.upButton)
-        hbox3.addWidget(self.modeButton)
-        vbox.addLayout(hbox3)
+        self.hbox3.addWidget(self.menuButton)
+        self.hbox3.addWidget(self.upButton)
+        self.hbox3.addWidget(self.modeButton)
+        self.vbox.addLayout(self.hbox3)
 
-        hbox4.addWidget(self.leftButton)
-        hbox4.addWidget(self.okButton)
-        hbox4.addWidget(self.rightButton)
-        vbox.addLayout(hbox4)
+        self.hbox4.addWidget(self.leftButton)
+        self.hbox4.addWidget(self.okButton)
+        self.hbox4.addWidget(self.rightButton)
+        self.vbox.addLayout(self.hbox4)
 
-        hbox5.addWidget(self.powerButton)
-        hbox5.addWidget(self.downButton)
-        hbox5.addWidget(self.sourceButton)
-        vbox.addLayout(hbox5)
-        vbox.addWidget(self.backButton)
+        self.hbox5.addWidget(self.powerButton)
+        self.hbox5.addWidget(self.downButton)
+        self.hbox5.addWidget(self.sourceButton)
+        self.vbox.addLayout(self.hbox5)
+        self.vbox.addWidget(self.backButton)
         
-        self.ACGroupBox.setFixedSize(720,480)
-        self.ACGroupBox.setLayout(vbox)
+        self.setLayout(self.vbox)
         
-        self.layout_for_wids.addWidget(self.ACGroupBox)
-        
-    
-
-    ###METHOD FOR BUTTONS
-
-    def vMinus(self):
-        if(self.version - 1 > 0):
-            self.version -= 1
-            self.versionLabel.setText(str(self.version))
-            self.blaster.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
-            print(self.blaster.command)
-    def vPlus(self):
-            self.version += 1
-            self.versionLabel.setText(str(self.version))
-            self.blaster.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
-    def bMinus(self):
-        if(self.brand - 1 >= 0):
-            self.brand -= 1
-            self.brandLabel.setText(self.brandArr[self.brand])
-            self.blaster.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
-    def bPlus(self):
-        if(self.brand + 1 < len(self.brandArr)):
-            self.brand += 1
-            self.brandLabel.setText(self.brandArr[self.brand])
-            self.blaster.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
-
-    def hardwareRefresh(self,Type,Brand,Version):
-                os.system("sudo cp /home/pi/"+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+" /etc/lirc/lircd.conf")
-                os.system("sudo /etc/init.d/lirc restart")
-                os.system("sudo lircd --device /dev/lirc0")
-    
-    def airconConnect(self):
-        self.leftButton.setText("fanDOWN")
-        self.rightButton.setText("fanUP")
-        self.upButton.setText("tempUP")
-        self.downButton.setText("tempDOWN")
-        self.brandArr = ["Samsung","Lg","Haier","Panasonic","Hitachi"]
-        self.type = "AirConditioner"
-        self.ACGroupBox.setTitle(self.type+" Remote")
-        self.okButton.setDisabled(True)
-        self.menuButton.setDisabled(True)
-        self.sourceButton.setDisabled(True)
-        self.brand = 0
-        self.version = 1
-        self.blaster.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
-        self.horizontalGroupBox.hide()
-        self.ACGroupBox.show()
-        
-        
-    def projectorConnect(self):
-        self.leftButton.setText("LEFT")
-        self.rightButton.setText("RIGHT")
-        self.upButton.setText("UP")
-        self.downButton.setText("DOWN")
-        self.brandArr = ["Samsung","Benq","Optoma","Sharp","Sony"]
-        self.type = "Projector"
-        self.ACGroupBox.setTitle(self.type+" Remote")
-        self.brand = 0
-        self.version = 1
-        self.blaster.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
-        self.horizontalGroupBox.hide()
-        self.ACGroupBox.show()
-        
-    def tvConnect(self):
-        self.leftButton.setText("volumeDOWN")
-        self.rightButton.setText("volumeUP")
-        self.upButton.setText("channelUP")
-        self.downButton.setText("channelDOWN")
-        self.brandArr = ["Samsung","Sony","Panasonic","Lg","Philips"]
-        self.type = "Television"
-        self.ACGroupBox.setTitle(self.type+" Remote")
-        
-        self.brand = 0
-        self.version = 1
-        self.blaster.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
-        self.horizontalGroupBox.hide()
-        self.ACGroupBox.show()
-        print("tv")
-        
-    def camConnect(self):
-        self.horizontalGroupBox.hide()
-        self.CAMGroupBox.show()
-
-    def openFolder(self):
-        print("explorer "+self.dest)
-        subprocess.call("explorer "+self.dest, shell=True)
-
-    def streamConnect(self):
-        self.CAMGroupBox.hide()
-        self.strGroupBox.show()
-
-    def streamBackConnect(self):
-        self.strGroupBox.hide()
-        self.CAMGroupBox.show()
-    
     def backConnect(self):
-        self.versionLabel.setText("1")
-        self.brandLabel.setText(self.brandArr[0])
-        self.CAMGroupBox.hide()
-        self.ACGroupBox.hide()
-        self.horizontalGroupBox.show()
+        self.hide()
+        self.coreUI.mainPage.show()
 
-def exitHandler():
-    room_core.isOn = False
-    camera_core.isOn = False
-    
+
+class pjPage(QGroupBox):
+    def __init__(self,coreUI):
+        super().__init__("Projector")
+        self.coreUI = coreUI
+        self.setFixedSize(720, 480)
+
+        self.version = 1
+        self.brand = 1
+        self.brandArray = ["Samsung","Lg","Benq","Panasonic","Sony"]
+        self.brandLabel = QLabel(" Test ")
+        self.versionLabel = QLabel("1")
+        self.brandLabel.setAlignment(Qt.AlignCenter)
+        self.versionLabel.setAlignment(Qt.AlignCenter)
+                               
+        self.backButton = QPushButton("back",self)
+        self.leftButton = QPushButton("Left",self)
+        self.rightButton = QPushButton("Right",self)
+        self.upButton = QPushButton("Up",self)
+        self.downButton = QPushButton("Down",self)
+        self.menuButton = QPushButton("Menu",self)
+        self.modeButton = QPushButton("Mode",self)
+        self.okButton = QPushButton("OK",self)
+        self.powerButton = QPushButton("Power",self)
+        self.sourceButton = QPushButton("Source",self)
+
+        self.vButtonL = QPushButton("<",self)
+        self.vButtonR = QPushButton(">",self)
+        self.bButtonL = QPushButton("<",self)
+        self.bButtonR = QPushButton(">",self)
+        
+        self.vbox = QVBoxLayout()
+        self.hbox1 = QHBoxLayout()
+        self.hbox2 = QHBoxLayout()
+        self.hbox3 = QHBoxLayout()
+        self.hbox4 = QHBoxLayout()
+        self.hbox5 = QHBoxLayout()
+        
+        #CONNECT THE BUTTONS
+
+        self.backButton.clicked.connect(self.backConnect)
+##        self.vButtonL.clicked.connect(self.vMinus)
+##        self.vButtonR.clicked.connect(self.vPlus)
+##        self.bButtonL.clicked.connect(self.bMinus)
+##        self.bButtonR.clicked.connect(self.bPlus)
+        
+        #SET BUTTONS LOCATION
+        self.hbox1.addWidget(self.vButtonL)
+        self.hbox1.addWidget(self.versionLabel)
+        self.hbox1.addWidget(self.vButtonR)
+        self.vbox.addLayout(self.hbox1)
+        
+        self.hbox2.addWidget(self.bButtonL)
+        self.hbox2.addWidget(self.brandLabel)
+        self.hbox2.addWidget(self.bButtonR)
+        self.vbox.addLayout(self.hbox2)
+
+        self.hbox3.addWidget(self.menuButton)
+        self.hbox3.addWidget(self.upButton)
+        self.hbox3.addWidget(self.modeButton)
+        self.vbox.addLayout(self.hbox3)
+
+        self.hbox4.addWidget(self.leftButton)
+        self.hbox4.addWidget(self.okButton)
+        self.hbox4.addWidget(self.rightButton)
+        self.vbox.addLayout(self.hbox4)
+
+        self.hbox5.addWidget(self.powerButton)
+        self.hbox5.addWidget(self.downButton)
+        self.hbox5.addWidget(self.sourceButton)
+        self.vbox.addLayout(self.hbox5)
+        self.vbox.addWidget(self.backButton)
+        
+        self.setLayout(self.vbox)
+        
+    def backConnect(self):
+        self.hide()
+        self.coreUI.mainPage.show()
+##    def vMinus(self):
+##        if(self.version - 1 > 0):
+##            self.version -= 1
+##            self.versionLabel.setText(str(self.version))
+##            self.blaster.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
+##            print(self.blaster.command)
+##    def vPlus(self):
+##            self.version += 1
+##            self.versionLabel.setText(str(self.version))
+##            self.blaster.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
+##    def bMinus(self):
+##        if(self.brand - 1 >= 0):
+##            self.brand -= 1
+##            self.brandLabel.setText(self.brandArr[self.brand])
+##            self.blaster.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
+##    def bPlus(self):
+##        if(self.brand + 1 < len(self.brandArr)):
+##            self.brand += 1
+##            self.brandLabel.setText(self.brandArr[self.brand])
+##            self.blaster.command = 'irsend SEND_ONCE '+self.type+'_'+self.brandArr[self.brand]+'_'+str(self.version)+' '
+##
+
+class tvPage(QGroupBox):
+    def __init__(self,coreUI):
+        super().__init__("Television")
+        self.coreUI = coreUI
+##        self.signal = IR_signal.Signal()
+        self.setFixedSize(720, 480)
+
+        self.version = 1
+        self.brand = 1
+        self.brandArray = ["Samsung","Lg","Haier","Panasonic","Hitachi"]
+        self.brandLabel = QLabel(" Test ")
+        self.versionLabel = QLabel("1")
+        self.brandLabel.setAlignment(Qt.AlignCenter)
+        self.versionLabel.setAlignment(Qt.AlignCenter)
+                               
+        self.backButton = QPushButton("back",self)
+        self.leftButton = QPushButton("Left",self)
+        self.rightButton = QPushButton("Right",self)
+        self.upButton = QPushButton("Up",self)
+        self.downButton = QPushButton("Down",self)
+        self.menuButton = QPushButton("Menu",self)
+        self.modeButton = QPushButton("Mode",self)
+        self.okButton = QPushButton("OK",self)
+        self.powerButton = QPushButton("Power",self)
+        self.sourceButton = QPushButton("Source",self)
+
+        self.vButtonL = QPushButton("<",self)
+        self.vButtonR = QPushButton(">",self)
+        self.bButtonL = QPushButton("<",self)
+        self.bButtonR = QPushButton(">",self)
+        
+        self.vbox = QVBoxLayout()
+        self.hbox1 = QHBoxLayout()
+        self.hbox2 = QHBoxLayout()
+        self.hbox3 = QHBoxLayout()
+        self.hbox4 = QHBoxLayout()
+        self.hbox5 = QHBoxLayout()
+        
+        #CONNECT THE BUTTONS
+
+        self.backButton.clicked.connect(self.backConnect)
+##        self.vButtonL.clicked.connect(self.vMinus)
+##        self.vButtonR.clicked.connect(self.vPlus)
+##        self.bButtonL.clicked.connect(self.bMinus)
+##        self.bButtonR.clicked.connect(self.bPlus)
+        
+        #SET BUTTONS LOCATION
+        self.hbox1.addWidget(self.vButtonL)
+        self.hbox1.addWidget(self.versionLabel)
+        self.hbox1.addWidget(self.vButtonR)
+        self.vbox.addLayout(self.hbox1)
+        
+        self.hbox2.addWidget(self.bButtonL)
+        self.hbox2.addWidget(self.brandLabel)
+        self.hbox2.addWidget(self.bButtonR)
+        self.vbox.addLayout(self.hbox2)
+
+        self.hbox3.addWidget(self.menuButton)
+        self.hbox3.addWidget(self.upButton)
+        self.hbox3.addWidget(self.modeButton)
+        self.vbox.addLayout(self.hbox3)
+
+        self.hbox4.addWidget(self.leftButton)
+        self.hbox4.addWidget(self.okButton)
+        self.hbox4.addWidget(self.rightButton)
+        self.vbox.addLayout(self.hbox4)
+
+        self.hbox5.addWidget(self.powerButton)
+        self.hbox5.addWidget(self.downButton)
+        self.hbox5.addWidget(self.sourceButton)
+        self.vbox.addLayout(self.hbox5)
+        self.vbox.addWidget(self.backButton)
+        
+        self.setLayout(self.vbox)
+        
+    def backConnect(self):
+        self.hide()
+        self.coreUI.mainPage.show()
 app = QApplication(sys.argv)
 
-wizard = mainPage()
-wizard.setWindowTitle('ROOM remote controller')
-app.aboutToQuit.connect(exitHandler)
-
-wizard.show()
-
+win = Window()
+win.show()
 app.exec_()
